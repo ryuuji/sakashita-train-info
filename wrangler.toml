@@ -1,7 +1,16 @@
 name = "sakashita-train-info"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
+account_id = "4904d4cf6aae3b8fcdbb35ecc9cdbb01"
 workers_dev = true
+routes = [
+  { pattern = "sakashita-train-info.ryuuji.info", custom_domain = true },
+]
+
+# / は public/index.html。ファイルが無いパス（/api/status, /mcp, /healthz）は Worker が処理する
+[assets]
+directory = "./public"
+not_found_handling = "none"
 
 [observability]
 enabled = true

@@ -1,15 +1,18 @@
 # sakashita-train-info
 
-JR中央本線 坂下駅の「通過時刻表」ページ（claude.ai のアーティファクト）に、列車の遅れを渡すための MCP サーバーです。
-Cloudflare Workers で動きます。
+JR中央本線 坂下駅の「通過時刻表」ページと、列車の遅れを返す API です。Cloudflare Workers で動きます。
+
+公開先: https://sakashita-train-info.ryuuji.info/
 
 JR東海「在来線運行情報」の列車走行位置データ（`zaisenichi.json`）と運行情報（`unkou.json`）を取得し、
 中央線の列車ごとの遅れ（分）と運行情報メッセージだけを返します。
 
 - JR東海への取得は **最大 1 分に 1 回**（Cache API で 60 秒キャッシュ）
 - 依存パッケージなし・認証なし・ステートレス
-- `POST /mcp`（MCP Streamable HTTP、JSON 応答） / `GET /healthz`
-- ツール: `get_sakashita_status`（引数なし・読み取り専用）
+- `GET /` … 通過時刻表ページ（`public/index.html`、Workers Static Assets）。`/api/status` を 1 分ごとに取得して遅れを反映
+- `GET /api/status` … 遅れのデータ（JSON、下記）
+- `POST /mcp` … 同じデータを返す MCP エンドポイント（MCP Streamable HTTP、JSON 応答、ツール `get_sakashita_status`）
+- `GET /healthz`
 
 ## 返すデータ
 
@@ -37,7 +40,7 @@ npx wrangler login  # 個人の Cloudflare アカウントでログイン
 npm run deploy
 ```
 
-デプロイ後の URL: `https://sakashita-train-info.<アカウントのサブドメイン>.workers.dev/mcp`
+`wrangler.toml` の `account_id` とカスタムドメイン（`routes`）は自分の環境に合わせて書き換えてください。
 
 ## GitHub Actions での自動デプロイ
 
@@ -47,15 +50,6 @@ npm run deploy
 |---|---|
 | `CLOUDFLARE_API_TOKEN` | Cloudflare の「API トークン」→ テンプレート「Edit Cloudflare Workers」で作成 |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare ダッシュボード右側の「Account ID」 |
-
-## claude.ai への追加
-
-設定 → コネクタ → カスタムコネクタを追加
-
-- 名前: **Sakashita Train Info**（ページはこの名前で呼び出すので一字一句同じに）
-- URL: `https://sakashita-train-info.<サブドメイン>.workers.dev/mcp`
-
-ページを開いたときに利用の許可を求められるので、許可すると遅れが表示されます。
 
 ## 動作確認
 

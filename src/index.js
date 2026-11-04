@@ -1,6 +1,6 @@
-// 坂下駅 運行情報 MCP サーバー（Cloudflare Workers 版）
+// 坂下駅 通過時刻表（Cloudflare Workers 版）
 // デプロイ: npx wrangler deploy（または GitHub Actions で main への push 時に自動デプロイ）
-// エンドポイント: https://<worker名>.<アカウント>.workers.dev/mcp
+// / は public/ の静的ページ、GET /api/status が遅延データ（JSON）、POST /mcp が MCP エンドポイント
 // JR東海への取得は Cache API で 60 秒キャッシュ（最大 1 分に 1 回）
 
 const BASE = "https://traininfo.jr-central.co.jp/zairaisen/data";
@@ -110,6 +110,14 @@ export default {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (url.pathname === "/healthz") return new Response("ok", { headers: CORS });
+    if (url.pathname === "/api/status") {
+      if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { ...CORS, allow: "GET, HEAD" } });
+      try {
+        return Response.json(await getStatus(ctx), { headers: { ...CORS, "cache-control": "no-store" } });
+      } catch (e) {
+        return Response.json({ error: `運行情報を取得できませんでした: ${e.message}` }, { status: 502, headers: { ...CORS, "cache-control": "no-store" } });
+      }
+    }
     if (url.pathname !== "/mcp") return new Response("Not found", { status: 404, headers: CORS });
     if (request.method !== "POST") return new Response(null, { status: 405, headers: { ...CORS, allow: "POST" } });
     let msg;

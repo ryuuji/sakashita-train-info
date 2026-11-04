@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>坂下駅 通過時刻表</title>
+<meta name="description" content="JR中央本線 坂下駅の発車・通過時刻と、JR東海の列車走行位置にもとづく遅れを表示する発車標。">
+<meta name="theme-color" content="#07090b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23030404'/%3E%3Crect x='4' y='22' width='24' height='4' fill='%23f08a1c'/%3E%3Ctext x='16' y='19' font-size='15' text-anchor='middle' fill='%23ffb21e' font-family='sans-serif' font-weight='700'%3E坂%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=BIZ+UDPGothic:wght@400;700&family=Chakra+Petch:wght@500;700&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+/* Layout: 夜の駅ホームの発車標。上に駅名標、中央にLED盤（全画面時は盤だけが画面を満たす）、下に操作と時刻表 */
+:root{
+  color-scheme:dark;
+  --night:#07090b; --panel:#0e1215; --edge:#20272c; --text:#e6ece9; --muted:#8a978f;
+  --led:#ffb21e; --led-soft:#c98a14; --led-off:#2a2008;
+  --green:#5fe38a; --red:#ff5a46; --ltd:#6fc4ff; --line:#f08a1c;
+  --f-led:"DotGothic16","BIZ UDPGothic",monospace;
+  --f-num:"Chakra Petch","BIZ UDPGothic",sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+html,body{background:var(--night)}
+body{color:var(--text);font-family:var(--f-body);font-size:15px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background:radial-gradient(1200px 500px at 50% -10%,rgba(240,138,28,.10),transparent 70%)}
+.wrap{max-width:1100px;margin:0 auto;padding-block:22px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:22px}
+
+/* 駅名標 */
+.sign{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:12px;padding:18px 18px 0;
+  background:linear-gradient(#f6f7f4,#e9ebe6);color:#16191b;border-radius:6px;position:relative;overflow:hidden}
+.sign .kana{grid-column:2;text-align:center;font-size:clamp(1.9rem,6vw,3rem);font-weight:700;letter-spacing:.18em;line-height:1.1}
+.sign .kanji{grid-column:2;text-align:center;font-size:.95rem;letter-spacing:.3em;margin-top:2px}
+.sign .roma{grid-column:2;text-align:center;font-family:var(--f-num);font-size:.8rem;letter-spacing:.35em;color:#4a5155}
+.sign .bar{grid-column:1/-1;height:12px;background:var(--line);margin:12px -18px 0;position:relative}
+.sign .nb{position:absolute;top:100%;font-size:.78rem;color:#16191b;padding-top:6px}
+.sign .nb.l{left:18px}.sign .nb.r{right:18px;text-align:right}
+.sign .nb b{display:block;font-size:.95rem}
+.sign .foot{grid-column:1/-1;height:46px}
+.sign .line{position:absolute;top:10px;left:14px;font-size:.7rem;letter-spacing:.12em;color:#5a6165}
+
+/* LED盤 */
+.board{background:#030404;border:1px solid var(--edge);border-radius:12px;padding:16px clamp(12px,2vw,24px) 14px;
+  display:grid;grid-template-rows:auto auto 1fr auto;gap:12px;position:relative;overflow:hidden;
+  box-shadow:inset 0 0 0 6px #0b0d0e, inset 0 0 60px rgba(0,0,0,.9), 0 20px 50px rgba(0,0,0,.5)}
+.board::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(rgba(0,0,0,.55) 38%,transparent 42%);background-size:3px 3px;mix-blend-mode:multiply;opacity:.55}
+.wrap>*{min-width:0}
+.bhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px;font-family:var(--f-led);color:var(--led)}
+.bhead .st{font-size:1.05rem;letter-spacing:.2em}
+.bhead .st small{color:var(--led-soft);margin-left:.6em;letter-spacing:.1em}
+#clock{font-family:var(--f-led);font-size:1.6rem;color:var(--green);font-variant-numeric:tabular-nums;letter-spacing:.06em;text-shadow:0 0 8px rgba(95,227,138,.5)}
+/* つぎの電車 */
+.hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"lab lab lab" "arr what when" "sub sub sub";
+  align-items:center;gap:.2em 1em;font-size:16px;padding:.2em 0 .9em;border-bottom:1px solid #1d2326;
+  font-family:var(--f-led);color:var(--led);text-shadow:0 0 8px rgba(255,178,30,.45)}
+.h-lab{grid-area:lab;font-family:var(--f-body);font-size:.8em;letter-spacing:.3em;color:#b7c1bb;text-shadow:none}
+.h-arr{grid-area:arr;font-size:4em;line-height:1;color:var(--line);text-shadow:0 0 14px rgba(240,138,28,.6)}
+.h-what{grid-area:what;font-size:2.1em;line-height:1.25;min-width:0}
+.h-what .kind{font-size:.5em;vertical-align:.35em;margin-right:.4em}
+.h-what small{display:block;font-size:.5em;color:var(--led-soft);text-shadow:none}
+.hero.pass .h-what{color:var(--ltd);text-shadow:0 0 10px rgba(111,196,255,.55)}
+.h-when{grid-area:when;text-align:right;font-size:2.8em;line-height:1.1;font-variant-numeric:tabular-nums;color:#ffd88a;white-space:nowrap}
+.h-when small{display:block;font-size:.32em;letter-spacing:.2em;color:var(--led-soft);text-shadow:none}
+.hero.soon .h-when b{color:var(--red);text-shadow:0 0 10px rgba(255,90,70,.6);animation:blink 1s steps(2,start) infinite}
+.h-sub{grid-area:sub;font-family:var(--f-body);font-size:.9em;color:#b7c1bb;text-shadow:none}
+.h-sub .late{margin-left:.6em}
+.hero.none .h-what{color:var(--led-off);text-shadow:none}
+@media (max-width:560px){
+  .hero{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"lab lab" "arr what" "when when" "sub sub"}
+  .h-arr{font-size:3em} .h-what{font-size:1.7em} .h-when{text-align:left;font-size:2.4em}
+  .h-when small{display:inline;margin-right:.6em}
+}
+/* そのあと */
+.dir{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dir h2{margin:0 0 4px;font-size:.78rem;font-weight:400;letter-spacing:.2em;color:#b7c1bb;
+  border-bottom:1px solid #1d2326;padding-bottom:6px}
+/* 行をまたいで列をそろえる（時刻＋おくれ / 矢印 / 種別 / 行き先 / あと何分） */
+#b-list{display:grid;grid-template-columns:auto auto auto minmax(0,1fr) auto;column-gap:.7em;align-items:center;
+  font-family:var(--f-led);color:var(--led);font-variant-numeric:tabular-nums;font-size:1.15rem;text-shadow:0 0 6px rgba(255,178,30,.45)}
+.row{display:contents}
+.row>*{padding:.18em 0}
+.row .tm{white-space:nowrap}
+.row .tm .late{margin-left:.5em}
+.row .arr{color:var(--line);text-align:center}
+.row .kind{font-size:.72em;padding:.05em .45em;border:1px solid currentColor;border-radius:3px;line-height:1.3;white-space:nowrap}
+.row .kind.local{color:var(--green);text-shadow:0 0 6px rgba(95,227,138,.45)}
+.row .kind.ltd{color:var(--red);text-shadow:0 0 6px rgba(255,90,70,.5)}
+.row .dest{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.pass .dest{color:var(--ltd);text-shadow:0 0 6px rgba(111,196,255,.5)}
+.row .left{color:#ffd88a;font-size:.8em;white-space:nowrap;text-align:right}
+.row.gone>*{opacity:.4}
+.row.gone .left{color:var(--muted);text-shadow:none}
+.row .late,.h-sub .late{font-size:.68em;white-space:nowrap;color:var(--red);border:1px solid currentColor;border-radius:3px;padding:0 .35em;vertical-align:.12em;text-shadow:0 0 6px rgba(255,90,70,.5)}
+.bright{display:flex;align-items:center;gap:14px;min-width:0}
+.live{font-family:var(--f-body);font-size:.72rem;letter-spacing:.04em;padding:.2em .7em;border-radius:99px;border:1px solid #2a3236;color:#9aa6a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live::before{content:"";display:inline-block;width:.55em;height:.55em;border-radius:50%;background:currentColor;margin-right:.45em;vertical-align:.05em}
+.live.ok{color:var(--green);border-color:rgba(95,227,138,.35)}
+.live.warn{color:var(--led);border-color:rgba(255,178,30,.4)}
+.live.bad{color:var(--red);border-color:rgba(255,90,70,.5)}
+.live.off{color:#7b8781}
+td span.late{text-decoration:underline wavy var(--red);text-underline-offset:3px}
+.row.soon .left{color:var(--red);animation:blink 1s steps(2,start) infinite}
+.row.none{color:var(--led-off);text-shadow:none}
+@keyframes blink{to{visibility:hidden}}
+.ticker{overflow:hidden;border-top:1px solid #1d2326;padding-top:8px;font-family:var(--f-led);color:var(--led-soft);white-space:nowrap}
+.ticker span{display:inline-block;padding-left:100%;animation:tick 28s linear infinite}
+@keyframes tick{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.row.soon .left,.hero.soon .h-when b,.ticker span{animation:none}.ticker span{padding-left:0}}
+
+#alert{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;background:#1a0705;border:2px solid var(--red);border-radius:8px;
+  padding:.6em .9em;font-family:var(--f-led);color:#ffd0c8;font-size:1.15rem;box-shadow:0 0 30px rgba(255,90,70,.35);animation:pulse 1.2s ease-in-out infinite}
+#alert b{color:var(--red);margin-right:.5em}
+#alert small{display:block;font-family:var(--f-num);font-size:.72em;color:#ffb3a8;letter-spacing:.02em;margin-top:.2em}
+@keyframes pulse{50%{box-shadow:0 0 6px rgba(255,90,70,.15)}}
+
+/* 操作 */
+.ctrl{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+button{font:inherit;font-weight:700;border-radius:8px;padding:10px 16px;cursor:pointer;border:1px solid var(--edge);background:#151b1f;color:var(--text);
+  display:inline-flex;align-items:center;gap:8px;transition:background .15s,border-color .15s}
+button:hover{border-color:#3a464d;background:#1a2227}
+button.primary{background:var(--line);border-color:var(--line);color:#1a0d00}
+button.primary.on{background:var(--green);border-color:var(--green)}
+button svg{width:18px;height:18px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--led);outline-offset:2px}
+.set{border-top:1px solid var(--edge);padding-top:12px}
+.set summary{cursor:pointer;color:#c9d2cd;font-size:.9rem;width:max-content}
+.set[open] summary{margin-bottom:12px}
+button.small{padding:6px 12px;font-size:.85rem;font-weight:400}
+.opts{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;color:#c9d2cd}
+.opts label{display:flex;gap:6px;align-items:center;cursor:pointer}
+input[type=checkbox]{accent-color:var(--line);width:16px;height:16px}
+select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid var(--edge);background:#151b1f;color:var(--text)}
+.status{color:var(--muted);font-size:.86rem}
+
+/* 時刻表 */
+.tt{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:14px 14px 8px;min-width:0}
+.tt h3{margin:0 0 8px;font-size:.95rem;letter-spacing:.08em;display:flex;justify-content:space-between;gap:8px}
+.tt h3 small{color:var(--muted);font-weight:400}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{border-top:1px solid var(--edge);padding:5px 6px;text-align:left;vertical-align:top}
+th{width:2.4em;font-family:var(--f-num);color:var(--line);font-weight:700}
+thead th{width:auto;font-family:var(--f-body);font-size:.8rem;font-weight:400;color:#b7c1bb;border-top:0}
+thead th:first-child{width:2.4em}
+tbody td{width:calc(50% - 1.2em)}
+td span{display:inline-block;margin-right:12px;font-family:var(--f-num);font-weight:500;font-size:1.02rem}
+td span sup{font-family:var(--f-body);font-size:.62em;color:var(--muted);margin-left:1px}
+td span.ltd,td span.ltd sup{color:var(--ltd)}
+td span.past{opacity:.3}
+td span.next{color:var(--led);text-shadow:0 0 8px rgba(255,178,30,.5)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted)}
+.legend b{font-weight:400}
+.dot{display:inline-block;width:.7em;height:.7em;border-radius:50%;margin-right:5px;vertical-align:-.05em}
+.note{color:var(--muted);font-size:.8rem;line-height:1.8}
+.note a{color:#b9c4be}
+
+/* 全画面：盤だけで画面を満たす */
+body.kiosk{overflow:hidden}
+body.kiosk .wrap>*:not(.board){display:none}
+body.kiosk .board{position:fixed;inset:0;z-index:20;border-radius:0;border:0;
+  padding-block:max(2.2vmin,env(safe-area-inset-top,0px)) max(2vmin,env(safe-area-inset-bottom,0px));
+  padding-left:max(3vmin,env(safe-area-inset-left,0px));padding-right:max(3vmin,env(safe-area-inset-right,0px));gap:2vmin;
+  height:100vh;height:100dvh;grid-template-rows:auto auto minmax(0,1fr) auto}
+body.kiosk .ticker{align-self:end}   /* 流れる文字は常に画面のいちばん下 */
+body.kiosk .bhead .st{font-size:min(3.4vmin,2.2vw)}
+body.kiosk #clock{font-size:min(6vmin,4vw)}
+body.kiosk .hero{font-size:min(3.6vmin,2.4vw)}
+body.kiosk .dir{justify-content:center;min-height:0;overflow:hidden}
+body.kiosk .dir h2{font-size:min(2.6vmin,1.6vw);margin-bottom:1vmin}
+body.kiosk #b-list{font-size:min(3.8vmin,2.2vw)}
+body.kiosk .row>*{padding:.15em 0}
+body.kiosk .ticker{font-size:min(2.8vmin,1.8vw)}
+body.kiosk .live{font-size:min(2.2vmin,1.4vw)}
+body.kiosk #alert{font-size:min(4.6vmin,2.6vw);left:3vmin;right:3vmin;top:max(11vmin,calc(env(safe-area-inset-top,0px) + 9vmin));bottom:auto}
+body.kiosk #exitfs{display:inline-flex}
+#exitfs{display:none;position:absolute;top:max(1.5vmin,env(safe-area-inset-top,0px));right:max(1.5vmin,env(safe-area-inset-right,0px));z-index:4;opacity:.25;padding:6px 10px;font-size:.8rem}
+#exitfs:hover,#exitfs:focus-visible{opacity:1}
+@media (orientation:portrait){
+  body.kiosk .hero{font-size:min(3.2vw,2.2vh)}
+  body.kiosk #b-list{font-size:min(4.6vw,3.2vh)}
+  body.kiosk .bhead .st{font-size:3.6vw} body.kiosk #clock{font-size:7vw}
+  body.kiosk .dir h2{font-size:2.8vw} body.kiosk .ticker{font-size:3vw} body.kiosk #alert{font-size:4.6vw}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="sign" aria-label="坂下駅">
+    <span class="line">JR 中央本線</span>
+    <div class="kana">さかした</div>
+    <div class="kanji">坂 下</div>
+    <div class="roma">SAKASHITA</div>
+    <div class="bar"><span class="nb l"><b>ただち</b>← 田立・南木曽</span><span class="nb r"><b>おちあいがわ</b>落合川・中津川 →</span></div>
+    <div class="foot"></div>
+  </div>
+
+  <section class="board" id="board" aria-live="polite">
+    <button id="exitfs" type="button">全画面を終了</button>
+    <div class="bhead"><span class="st">坂下駅<small>通過時刻表</small></span><span class="bright"><span id="live" class="live off">遅延情報を確認中…</span><span id="clock">--:--:--</span></span></div>
+    <div class="hero" id="hero"></div>
+    <div class="dir"><h2 id="list-h">そのあと</h2><div id="b-list"></div></div>
+    <div class="ticker"><span id="ticker"></span></div>
+    <div id="alert" role="alert" hidden></div>
+  </section>
+
+  <section class="ctrl">
+    <div class="btns">
+      <button id="start" type="button" class="primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span>案内を開始</span></button>
+      <button id="fs" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        全画面表示</button>
+    </div>
+    <div class="status" id="status"></div>
+    <details class="set">
+      <summary>設定</summary>
+      <div class="opts">
+        <label>お知らせ <select id="lead"><option value="3" selected>3分前</option><option value="5">5分前</option><option value="10">10分前</option><option value="15">15分前</option></select></label>
+        <label>音声 <select id="voice"><option value="ja-en" selected>日本語＋English</option><option value="ja">日本語のみ</option><option value="off">なし（チャイムのみ）</option></select></label>
+        <label><input type="checkbox" id="c-pass" checked> 特急しなのの通過も表示</label>
+        <button id="demo" type="button" class="small">音声を試す</button>
+      </div>
+    </details>
+  </section>
+
+  <section class="tt">
+    <h3>時刻表<small>普通は発車時刻、特急しなのは通過時刻（推定）</small></h3>
+    <table id="tt"><thead><tr><th></th><th>→ 中津川・名古屋方面</th><th>← 南木曽・松本・長野方面</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--text)"></i><b>普通 発車</b></span>
+    <span><i class="dot" style="background:var(--ltd)"></i><b>特急しなの 通過（推定）</b></span>
+    <span><b><sup>曽</sup> 南木曽行　<sup>尻</sup> 塩尻行　無印 松本行（松本方面）</b></span>
+  </div>
+
+  <p class="note">
+    特急「しなの」の通過時刻は公表されていないため、中津川駅の時刻から約6〜7分の走行時間で推定した目安です（前後1〜2分のずれあり）。「しなの」は坂下駅に1本も停車しません。<br>
+    2026年11月時点のダイヤ（平日・土休日とも同一）。遅れは、JR東海の列車走行位置から最大1分ごとに反映します（運転中の列車のみ。臨時列車・運休は反映しません）。最新情報はJR東海の運行情報でご確認ください。<br>
+    出典：<a href="https://ekitan.com/timetable/railway/line-station/9-60/d2" target="_blank" rel="noopener">駅探</a>、<a href="https://www.navitime.co.jp/diagram/timetable?node=00002843&lineId=00000109&updown=0" target="_blank" rel="noopener">NAVITIME</a>、<a href="https://jr-group.jp/shinano-timetable/" target="_blank" rel="noopener">特急「しなの」時刻表</a>、<a href="https://traininfo.jr-central.co.jp/zairaisen/" target="_blank" rel="noopener">JR東海 在来線運行情報</a>
+  </p>
+</div>
+
+<script>
+const T = {
+  down: { name:"中津川・名古屋方面", list:[
+    ["5:56","中津川"],["6:27","中津川"],["6:42","中津川"],["7:11","中津川"],["7:34","中津川"],["8:35","中津川"],["8:57","中津川"],
+    ["10:17","中津川"],["11:34","中津川"],["12:42","中津川"],["13:35","中津川"],["14:34","中津川"],["16:35","中津川"],
+    ["17:07","中津川"],["17:40","中津川"],["18:14","中津川"],["18:40","中津川"],["19:40","中津川"],["20:39","中津川"],["21:17","中津川"],["23:24","中津川"],
+    ["8:15","名古屋","しなの2号"],["9:50","名古屋","しなの4号"],["10:59","名古屋","しなの6号"],["11:59","名古屋","しなの8号"],
+    ["12:59","名古屋","しなの10号"],["13:59","名古屋","しなの12号"],["15:02","名古屋","しなの14号"],["16:02","名古屋","しなの16号"],
+    ["17:02","名古屋","しなの18号"],["18:02","名古屋","しなの20号"],["19:02","名古屋","しなの22号"],["20:19","名古屋","しなの24号"],["21:41","名古屋","しなの26号"]
+  ]},
+  up: { name:"南木曽・松本方面", list:[
+    ["6:13","松本"],["6:53","松本"],["7:08","南木曽"],["7:58","松本"],["8:24","南木曽"],["10:10","松本"],["12:10","松本"],
+    ["13:10","南木曽"],["14:24","松本"],["16:09","南木曽"],["17:07","松本"],["18:07","松本"],["19:07","南木曽"],
+    ["20:10","塩尻"],["21:40","松本"],["23:20","南木曽"],
+    ["7:55","長野","しなの1号"],["8:57","長野","しなの3号"],["9:56","長野","しなの5号"],["10:54","長野","しなの7号"],
+    ["11:55","長野","しなの9号"],["12:55","長野","しなの11号"],["13:56","長野","しなの13号"],["14:55","長野","しなの15号"],
+    ["15:55","長野","しなの17号"],["16:55","長野","しなの19号"],["18:36","長野","しなの21号"],["19:36","長野","しなの23号"],["20:38","長野","しなの25号"]
+  ]}
+};
+/* 列車番号（JR東海の列車走行位置データと突き合わせるため） */
+const TN = {
+  down:{"5:56":"1850M","6:27":"1852M","6:42":"1854M","7:11":"1820M","7:34":"1856M","8:35":"822M","8:57":"1858M","10:17":"1824M","11:34":"1860M",
+        "12:42":"1826M","13:35":"1862M","14:34":"1828M","16:35":"1864M","17:07":"1832M","17:40":"1866M","18:14":"834M","18:40":"1836M",
+        "19:40":"1868M","20:39":"838M","21:17":"1870M","23:24":"1842M"},
+  up:{"6:13":"823M","6:53":"1825M","7:08":"1851M","7:58":"1827M","8:24":"1853M","10:10":"829M","12:10":"1831M","13:10":"1857M","14:24":"1833M",
+      "16:09":"1859M","17:07":"1837M","18:07":"1839M","19:07":"1863M","20:10":"1841M","21:40":"843M","23:20":"1869M"}
+};
+for (const k in T) T[k].list = T[k].list.map(([t,d,no])=>{const [h,m]=t.split(":").map(Number);
+  const tn = no ? `10${String(no.replace(/\D/g,"")).padStart(2,"0")}M` : TN[k][t];
+  return {t,d,no,tn,pass:!!no,min:h*60+m,k};}).sort((a,b)=>a.min-b.min);
+
+/* ---- 遅延情報（同じサイトの /api/status、最大1分に1回） ---- */
+const LIVE_URL = "/api/status", LIVE_INTERVAL = 60000;
+let DELAY = {}, LIVE = { state:"init", line:null, at:null };
+const delayOf = x => DELAY[x.tn] || 0;
+const effSec = x => (x.min + delayOf(x)) * 60;
+const mark = {南木曽:"曽", 塩尻:"尻"};
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,"0");
+let running=false, alerted=new Set(), audio=null, wake=null, alertTimer=null, lastTicker="";
+
+const nowSec = () => {const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();};
+const fmtLeft = s => s<60 ? "まもなく" : (s>=3600 ? `${Math.floor(s/3600)}時間${Math.floor(s%3600/60)}分` : `${Math.floor(s/60)}分後`);
+const visible = x => !x.pass || $("c-pass").checked;
+
+/* 向きは駅名標と同じ：右が中津川・名古屋、左が南木曽・松本・長野 */
+const ARROW = {down:"→", up:"←"};
+const TOWARD = {down:"中津川・名古屋のほうへ", up:"南木曽・松本・長野のほうへ"};
+const ALL = [...T.down.list, ...T.up.list];
+
+function buildTables(){
+  const hours=[...new Set(ALL.map(x=>Math.floor(x.min/60)))].sort((a,b)=>a-b);
+  const cell=(k,h)=>T[k].list.map((x,i)=>Math.floor(x.min/60)===h ?
+    `<span data-k="${k}" data-i="${i}" ${x.pass?`title="${x.no} 通過（推定）"`:""}>${pad(x.min%60)}${x.pass?"<sup>通</sup>":(k==="up"&&mark[x.d]?`<sup>${mark[x.d]}</sup>`:"")}</span>` : "").join("");
+  $("tt").tBodies[0].innerHTML = hours.map(h=>`<tr><th>${h}</th><td>${cell("down",h)}</td><td>${cell("up",h)}</td></tr>`).join("");
+}
+
+const kindHtml = x => x.pass ? `<span class="kind ltd">特急</span>` : `<span class="kind local">普通</span>`;
+const lateHtml = x => { const dl=delayOf(x); return dl>0 ? `<span class="late">${dl}分おくれ</span>` : ""; };
+/* ルール：表示する時刻は遅れを足した時刻。遅れているときは必ず時刻の横に「N分おくれ」を付ける */
+const effT = x => { const m=(x.min+delayOf(x))%1440; return `${Math.floor(m/60)}:${pad(m%60)}`; };
+const timeHtml = x => `${effT(x)}${lateHtml(x)}`;
+const timeTx = x => { const dl=delayOf(x); return effT(x) + (dl>0 ? ` [${dl}分おくれ]` : ""); };
+/* 10分を切ったら秒まで数える */
+const countdown = left => left<60 ? ["まもなく",""] : left<600 ? [`${Math.floor(left/60)}:${pad(left%60)}`,"あと"] : [fmtLeft(left).replace("後",""),"あと"];
+
+function renderHero(x, s, lead){
+  const el=$("hero");
+  if (!x){
+    const first=ALL.filter(visible).sort((a,b)=>a.min-b.min)[0];
+    el.className="hero none";
+    el.innerHTML=`<div class="h-lab">つぎの電車</div><div class="h-arr">・</div><div class="h-what">きょうの電車はおわりました</div>`+
+      (first?`<div class="h-sub">あしたは ${first.t} から</div>`:"");
+    return;
+  }
+  const left=effSec(x)-s, [big,small]=countdown(left);
+  const name = x.pass ? `しなの ${x.no.replace(/\D/g,"")}号` : `${x.d}ゆき`;
+  const how = x.pass ? `${x.d}ゆき・とまらずに通過` : `坂下にとまります`;
+  el.className=`hero ${x.pass?"pass":""} ${left<=lead?"soon":""}`;
+  el.innerHTML=`<div class="h-lab">つぎの電車</div>`+
+    `<div class="h-arr" aria-label="${TOWARD[x.k]}">${ARROW[x.k]}</div>`+
+    `<div class="h-what">${kindHtml(x)}${name}<small>${how}</small></div>`+
+    `<div class="h-when"><small>${small}</small><b>${big}</b></div>`+
+    `<div class="h-sub">${effT(x)}${x.pass?"ごろ":""}${lateHtml(x)}　${TOWARD[x.k]}</div>`;
+}
+
+function render(){
+  const s=nowSec(), d=new Date(), lead=+$("lead").value*60;
+  $("clock").textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const next=ALL.filter(x=>effSec(x)>s && visible(x)).sort((a,b)=>effSec(a)-effSec(b));
+  renderHero(next[0], s, lead);
+  /* 10分以内に通過・発車した列車（暗く表示）＋これから来る列車 */
+  const gone=ALL.filter(x=>visible(x) && effSec(x)<=s && s-effSec(x)<=600).sort((a,b)=>effSec(a)-effSec(b));
+  const rest=next.slice(1, Math.max(3, 6-gone.length));
+  const destOf = x => x.pass ? `しなの ${x.no.replace(/\D/g,"")}号 通過` : `${x.d}ゆき`;
+  const rowOf = (x, cls, left) => `<div class="row ${cls} ${x.pass?"pass":""}"><span class="tm">${timeHtml(x)}</span><span class="arr">${ARROW[x.k]}</span>${kindHtml(x)}<span class="dest">${destOf(x)}</span><span class="left">${left}</span></div>`;
+  $("list-h").textContent = gone.length ? "さっき・そのあと" : "そのあと";
+  $("b-list").innerHTML =
+    gone.map(x=>{ const ago=Math.floor((s-effSec(x))/60); return rowOf(x, "gone", `${ago<1?"いま":ago+"分前"} ${x.pass?"通過":"発車"}`); }).join("") +
+    (rest.length ? rest.map(x=>{ const left=effSec(x)-s; return rowOf(x, left<=lead?"soon":"", fmtLeft(left)); }).join("")
+      : `<div class="row none"><span>--:--</span><span></span><span></span><span class="dest">このあとの電車はありません</span><span></span></div>`);
+  document.querySelectorAll("span[data-k]").forEach(el=>{
+    const x=T[el.dataset.k].list[el.dataset.i];
+    el.className = (effSec(x)<=s ? "past" : (x===next[0] ? "next" : "")) + (x.pass?" ltd":"") + (delayOf(x)>0?" late":"");
+  });
+  if (running){
+    for (const x of next){
+      const left=effSec(x)-s, key=d.toDateString()+x.k+x.t;
+      if (left<=lead && !alerted.has(key)){ alerted.add(key); notify(x, Math.ceil(left/60)); }
+    }
+  }
+  renderLive();
+  const lm = LIVE.line && LIVE.line.message ? `【中央線 運行情報】${LIVE.line.message}　　` : "";
+  const tk = lm + (running ? `案内中　発車・通過の${$("lead").value}分前にお知らせします　　` : "") +
+    (LIVE.state==="ok" ? "遅れはJR東海の列車走行位置から1分ごとに反映しています　　" : "") +
+    "坂下駅は特急「しなの」がすべて通過します。通過時刻は推定値です　　黄色い線の内側でお待ちください";
+  if (tk!==lastTicker){ $("ticker").textContent=tk; lastTicker=tk; }
+}
+
+function ensureAudio(){
+  try{ audio = audio || new (window.AudioContext||window.webkitAudioContext)(); audio.resume(); }catch(e){}
+}
+/* チャイム：ベル風の倍音＋ホームの残響 */
+let bus=null;
+function chimeBus(){
+  if (bus) return bus;
+  const dry=audio.createGain(), wet=audio.createGain(), conv=audio.createConvolver(), comp=audio.createDynamicsCompressor();
+  const len=audio.sampleRate*2.2, ir=audio.createBuffer(2,len,audio.sampleRate);
+  for (let c=0;c<2;c++){ const d=ir.getChannelData(c); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2)*.6; }
+  conv.buffer=ir; dry.gain.value=.8; wet.gain.value=.35;
+  const inp=audio.createGain(); inp.connect(dry); inp.connect(conv); conv.connect(wet);
+  dry.connect(comp); wet.connect(comp); comp.connect(audio.destination);
+  return bus=inp;
+}
+function bell(f,at,vol=.2){
+  const out=chimeBus(), g=audio.createGain(); g.connect(out);
+  g.gain.setValueAtTime(0,at); g.gain.linearRampToValueAtTime(vol,at+.008); g.gain.exponentialRampToValueAtTime(.0008,at+1.6);
+  [[1,1],[2.0,.32],[3.0,.12],[4.2,.06]].forEach(([r,a])=>{
+    const o=audio.createOscillator(), og=audio.createGain(); o.type="sine"; o.frequency.value=f*r; og.gain.value=a;
+    o.connect(og); og.connect(g); o.start(at); o.stop(at+1.7);
+  });
+}
+function chime(){
+  if(!audio) return;
+  const t=audio.currentTime+.06;
+  [[659.3,0],[523.3,.36],[587.3,.72],[392,1.08],[392,1.7],[587.3,2.06],[659.3,2.42],[523.3,2.78]].forEach(([f,o])=>bell(f,t+o));
+  return 3900;
+}
+/* ---- 音声：日本語→英語の順に、文ごとに間を置いて読み上げる ---- */
+const VOICE_PREF = {
+  ja:[/Nanami/i,/Kyoko/i,/O-?ren/i,/Google 日本語/i,/Haruka/i,/Ayumi/i,/Otoya/i,/Hattori/i],
+  en:[/Aria|Jenny|Ava/i,/Samantha/i,/Google US English/i,/Zira/i,/Karen|Moira|Serena/i,/Daniel/i]
+};
+function pickVoice(lang){
+  const vs = ("speechSynthesis" in window) ? speechSynthesis.getVoices() : [];
+  const cand = vs.filter(v=>v.lang.toLowerCase().startsWith(lang));
+  for (const re of VOICE_PREF[lang]){ const v=cand.filter(v=>re.test(v.name)); if(v.length) return v.find(v=>/Natural|Online|Neural|Enhanced|Premium/i.test(v.name))||v[0]; }
+  return cand.find(v=>/Natural|Online|Neural|Enhanced|Premium/i.test(v.name)) || cand[0] || null;
+}
+let speechRefs=[];
+function speakSeq(parts){
+  if ($("voice").value==="off" || !("speechSynthesis" in window)) return;
+  try{ speechSynthesis.cancel(); }catch(e){}
+  speechRefs=[];
+  const run = i => {
+    if (i>=parts.length) return;
+    const p=parts[i];
+    if (p.pause){ setTimeout(()=>run(i+1), p.pause); return; }
+    const u=new SpeechSynthesisUtterance(p.text);
+    u.lang = p.lang==="en" ? "en-US" : "ja-JP";
+    const v = pickVoice(p.lang); if (v) u.voice=v;
+    u.rate = p.lang==="en" ? .92 : 1.0; u.pitch = p.lang==="en" ? 1.0 : 1.05; u.volume=1;
+    let done=false; const next=()=>{ if(!done){ done=true; run(i+1); } };
+    u.onend=next; u.onerror=next;
+    setTimeout(next, 600 + p.text.length*(p.lang==="en"?95:210));   // onend が来ない端末向けの保険
+    speechRefs.push(u); speechSynthesis.speak(u);
+  };
+  run(0);
+}
+/* 読み間違えやすい駅名はかなで渡す */
+const YOMI = {中津川:"なかつがわ",南木曽:"なぎそ",松本:"まつもと",塩尻:"しおじり",名古屋:"なごや",長野:"ながの"};
+const ROMA = {中津川:"Nakatsugawa",南木曽:"Nagiso",松本:"Matsumoto",塩尻:"Shiojiri",名古屋:"Nagoya",長野:"Nagano"};
+function enTime(t){ const [h,m]=t.split(":").map(Number); return `${h%12||12}:${pad(m)} ${h<12?"a.m.":"p.m."}`; }
+function phrase(x,m){
+  const hm = x.t.replace(":","時")+"分", yomi=YOMI[x.d]||x.d, roma=ROMA[x.d]||x.d, dl=delayOf(x);
+  const num = x.pass ? x.no.replace("しなの","").replace("号","") : "";
+  const lateJa = dl>0 ? [`この列車は、およそ${dl}分遅れて運転しています。`] : [];
+  const lateEn = dl>0 ? [`This train is running about ${dl} minute${dl>1?"s":""} behind schedule.`] : [];
+  const lateTxEn = dl>0 ? ` (${dl} min late)` : "";
+  if (x.pass) return {
+    text:`${timeTx(x)}ごろ 特急${x.no}（${x.d}行）があと約${m}分で通過します`,
+    en:`Limited Express Shinano No. ${num} for ${roma}${lateTxEn} passes in about ${m} min`,
+    ja:[`まもなく、特急しなの${num}号、${yomi}ゆきが、通過いたします。`, ...lateJa, `危ないですから、黄色い線の内側まで、お下がりください。`],
+    enSay:[`Attention, please.`, `The Limited Express Shinano, number ${num}, bound for ${roma}, will soon pass through this station.`, ...lateEn, `For your safety, please stand behind the yellow line.`]
+  };
+  return {
+    text:`${timeTx(x)} 普通 ${x.d}行（${T[x.k].name}）あと${m}分で発車`,
+    en:`Local train for ${roma}, ${effT(x)}${lateTxEn}, departs in ${m} min`,
+    ja:[`まもなく、${hm}発、普通、${yomi}ゆきが、まいります。`, ...lateJa, `発車まで、あと${m}分です。`, `黄色い線の内側で、お待ちください。`],
+    enSay:[`Attention, please.`, `The ${enTime(x.t)} local train bound for ${roma} will depart in ${m} minute${m>1?"s":""}.`, ...lateEn, `Please wait behind the yellow line.`]
+  };
+}
+function notify(x,m,demo=false){
+  const p=phrase(x,m), useEn=$("voice").value==="ja-en";
+  $("alert").innerHTML=`<b>${demo?"デモ":"まもなく"}</b>${p.text}${useEn?`<small>${p.en}</small>`:""}`; $("alert").hidden=false;
+  clearTimeout(alertTimer); alertTimer=setTimeout(()=>{$("alert").hidden=true;}, demo?25000:3*60*1000);
+  const wait = chime() || 0;
+  const parts=[];
+  p.ja.forEach(t=>parts.push({text:t,lang:"ja"},{pause:350}));
+  if (useEn){ parts.push({pause:700}); p.enSay.forEach(t=>parts.push({text:t,lang:"en"},{pause:300})); }
+  setTimeout(()=>speakSeq(parts), wait);
+  if (!demo){ try{ if("Notification" in window && Notification.permission==="granted") new Notification("坂下駅 通過時刻表",{body:p.text}); }catch(e){} }
+}
+
+async function keepAwake(){ try{ if(!wake) wake = await navigator.wakeLock?.request("screen"); wake?.addEventListener?.("release",()=>{wake=null;}); }catch(e){} }
+
+$("start").addEventListener("click", ()=> setRunning(!running));
+function setRunning(on, askNotify=true){
+  running=on; ensureAudio();
+  $("start").querySelector("span").textContent = running ? "案内を停止" : "案内を開始";
+  $("start").classList.toggle("on", running);
+  if (running){
+    // 全画面から起動したときは、許可ダイアログで全画面が解除されないよう通知の許可は求めない
+    if (askNotify) try{ if("Notification" in window && Notification.permission==="default") Notification.requestPermission().catch(()=>{}); }catch(e){}
+    keepAwake();
+  } else {
+    try{ wake?.release(); }catch(e){} wake=null;
+  }
+  showStatus(); render();
+}
+
+$("demo").addEventListener("click", ()=>{
+  ensureAudio();
+  const s=nowSec();
+  const all=[...T.down.list,...T.up.list].filter(visible).sort((a,b)=>a.min-b.min);
+  const x = all.find(x=>effSec(x)>s) || all[0];
+  notify(x, +$("lead").value, true);
+});
+
+/* ---- 遅延情報の受信 ---- */
+function renderLive(){
+  const el=$("live"); if(!el) return;
+  const hhmm = LIVE.at ? new Date(LIVE.at).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}) : "";
+  const st = LIVE.line?.status;
+  let cls="off", txt="遅延情報なし（時刻表どおり表示）";
+  if (LIVE.state==="ok"){ cls = st==="suspend"?"bad":(st==="delay"?"warn":"ok"); txt = `${st==="suspend"?"運転見合わせ":st==="delay"?"遅れあり":"平常運転"}　${hhmm}更新`; }
+  else if (LIVE.state==="stale"){ cls="warn"; txt=`遅延情報を更新できません（${hhmm}時点）`; }
+  else if (LIVE.state==="init"){ txt="遅延情報を確認中…"; }
+  else if (LIVE.state==="error"){ cls="warn"; txt="遅延情報を取得できません"; }
+  el.className="live "+cls; el.textContent=txt;
+}
+function applyLive(payload){
+  if (!payload || !Array.isArray(payload.trains)) throw new Error("bad payload");
+  const m={}; for (const t of payload.trains) if (t.trainNumber) m[t.trainNumber]=Math.max(0,Number(t.delayMin)||0);
+  DELAY=m; LIVE.line=payload.line||null;
+  LIVE.at = payload.positionTime ? Date.parse(payload.positionTime) : Date.now();
+  LIVE.state = "ok";
+}
+let liveTimer=null, liveBusy=false;
+async function pollLive(){
+  clearTimeout(liveTimer);
+  if (!liveBusy){
+    liveBusy=true;
+    try{
+      const r = await fetch(LIVE_URL, { headers:{ accept:"application/json" }, cache:"no-store" });
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      applyLive(await r.json());
+    }catch(e){
+      LIVE.state = LIVE.at ? "stale" : "error";   // 一時的な失敗は前回の遅れを残す
+      if (LIVE.at && Date.now()-LIVE.at > 15*60*1000){ DELAY={}; }   // 15分以上古い遅れは捨てる
+    }finally{ liveBusy=false; }
+    render();
+  }
+  liveTimer = setTimeout(pollLive, LIVE_INTERVAL);
+}
+pollLive();
+
+function enterKiosk(){
+  ensureAudio(); document.body.classList.add("kiosk"); keepAwake();
+  if (!running) setRunning(true, false);   // 全画面にしたら案内も開始する
+  const el=document.documentElement;
+  try{ const r=(el.requestFullscreen||el.webkitRequestFullscreen)?.call(el); r?.catch?.(()=>{}); }catch(e){}
+}
+function exitKiosk(){
+  document.body.classList.remove("kiosk");
+  try{ if(document.fullscreenElement||document.webkitFullscreenElement) (document.exitFullscreen||document.webkitExitFullscreen).call(document); }catch(e){}
+}
+$("fs").addEventListener("click", enterKiosk);
+$("exitfs").addEventListener("click", exitKiosk);
+$("board").addEventListener("dblclick", ()=> document.body.classList.contains("kiosk") ? exitKiosk() : enterKiosk());
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") exitKiosk(); });
+document.addEventListener("fullscreenchange", ()=>{ if(!document.fullscreenElement) document.body.classList.remove("kiosk"); });
+document.addEventListener("visibilitychange", ()=>{
+  if (document.visibilityState!=="visible") return;
+  if (running||document.body.classList.contains("kiosk")) keepAwake();
+  if (!LIVE.at || Date.now()-LIVE.at > LIVE_INTERVAL) pollLive();   // 復帰時にすぐ更新
+});
+function showStatus(){
+  const lead=$("lead").value;
+  $("status").textContent = running
+    ? `案内中：発車・通過の${lead}分前にお知らせします。画面を開いたままにしてください。`
+    : `「案内を開始」を押すと、発車・通過の${lead}分前にチャイムと音声でお知らせします。`;
+}
+["lead","c-pass","voice"].forEach(id=>$(id).addEventListener("change",()=>{ showStatus(); render(); }));
+if ("speechSynthesis" in window) speechSynthesis.getVoices();   // 音声一覧を先に読み込んでおく
+
+buildTables(); showStatus(); render(); setInterval(render,1000);
+</script>
+</body>
+</html>
