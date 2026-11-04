@@ -115,7 +115,9 @@ td span.late{text-decoration:underline wavy var(--red);text-underline-offset:3px
 @keyframes tick{to{transform:translateX(-100%)}}
 @media (prefers-reduced-motion:reduce){.row.soon .left,.hero.soon .h-when b,.ticker span{animation:none}.ticker span{padding-left:0}}
 
-#alert{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;background:#1a0705;border:2px solid var(--red);border-radius:8px;
+/* お知らせは盤の最下部（流れる文字の場所）に出し、出ている間は流れる文字を隠す */
+.board:has(#alert:not([hidden])) .ticker{display:none}
+#alert{position:relative;z-index:3;align-self:end;background:#1a0705;border:2px solid var(--red);border-radius:8px;
   padding:.6em .9em;font-family:var(--f-led);color:#ffd0c8;font-size:1.15rem;box-shadow:0 0 30px rgba(255,90,70,.35);animation:pulse 1.2s ease-in-out infinite}
 #alert b{color:var(--red);margin-right:.5em}
 #alert small{display:block;font-family:var(--f-num);font-size:.72em;color:#ffb3a8;letter-spacing:.02em;margin-top:.2em}
@@ -179,7 +181,8 @@ body.kiosk #b-list{font-size:min(3.8vmin,2.2vw)}
 body.kiosk .row>*{padding:.15em 0}
 body.kiosk .ticker{font-size:min(2.8vmin,1.8vw)}
 body.kiosk .live{font-size:min(2.2vmin,1.4vw)}
-body.kiosk #alert{font-size:min(4.6vmin,2.6vw);left:3vmin;right:3vmin;top:max(11vmin,calc(env(safe-area-inset-top,0px) + 9vmin));bottom:auto}
+body.kiosk #alert{font-size:min(3.6vmin,2.4vw);padding:.45em .8em}
+body.kiosk .board:has(#alert:not([hidden])) #b-list .row:nth-child(n+5){display:none}   /* お知らせの分だけ一覧を詰める */
 body.kiosk #exitfs{display:inline-flex}
 #exitfs{display:none;position:absolute;top:max(1.5vmin,env(safe-area-inset-top,0px));right:max(1.5vmin,env(safe-area-inset-right,0px));z-index:4;opacity:.25;padding:6px 10px;font-size:.8rem}
 #exitfs:hover,#exitfs:focus-visible{opacity:1}
@@ -187,7 +190,7 @@ body.kiosk #exitfs{display:inline-flex}
   body.kiosk .hero{font-size:min(3.2vw,2.2vh)}
   body.kiosk #b-list{font-size:min(4.6vw,3.2vh)}
   body.kiosk .bhead .st{font-size:3.6vw} body.kiosk #clock{font-size:7vw}
-  body.kiosk .dir h2{font-size:2.8vw} body.kiosk .ticker{font-size:3vw} body.kiosk #alert{font-size:4.6vw}
+  body.kiosk .dir h2{font-size:2.8vw} body.kiosk .ticker{font-size:3vw} body.kiosk #alert{font-size:3.8vw}
 }
 </style>
 </head>
