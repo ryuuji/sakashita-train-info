@@ -1,0 +1,15 @@
+{
+  "name": "sakashita-train-info",
+  "version": "1.0.0",
+  "private": true,
+  "description": "坂下駅 通過時刻表に JR東海 在来線運行情報の遅延を渡す MCP サーバー（Cloudflare Workers）",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node test/smoke.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.2"
+  }
+}
