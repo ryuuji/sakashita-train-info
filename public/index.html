@@ -20,7 +20,7 @@ body{margin:0;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,
   color-scheme:dark;
   --night:#07090b; --panel:#0e1215; --edge:#20272c; --text:#e6ece9; --muted:#8a978f;
   --led:#ffb21e; --led-soft:#c98a14; --led-off:#2a2008;
-  --green:#5fe38a; --red:#ff5a46; --ltd:#6fc4ff; --line:#f08a1c;
+  --green:#5fe38a; --red:#ff5a46; --ltd:#6fc4ff; --frt:#c9aaff; --line:#f08a1c;
   --f-led:"DotGothic16","BIZ UDPGothic",monospace;
   --f-num:"Chakra Petch","BIZ UDPGothic",sans-serif;
   --f-body:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
@@ -72,6 +72,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
 .hero.soon .h-when b{color:var(--red);text-shadow:0 0 10px rgba(255,90,70,.6);animation:blink 1s steps(2,start) infinite}
 .h-sub{grid-area:sub;font-family:var(--f-body);font-size:.9em;color:#b7c1bb;text-shadow:none}
 .h-sub .late{margin-left:.6em}
+.hero.frt .h-what{color:var(--frt);text-shadow:0 0 10px rgba(201,170,255,.5)}
 .hero.none .h-what{color:var(--led-off);text-shadow:none}
 @media (max-width:560px){
   .hero{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"lab lab" "arr what" "when when" "sub sub"}
@@ -95,6 +96,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
 .row .kind.ltd{color:var(--red);text-shadow:0 0 6px rgba(255,90,70,.5)}
 .row .dest{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row.pass .dest{color:var(--ltd);text-shadow:0 0 6px rgba(111,196,255,.5)}
+.row .kind.frt,.row.frt .dest{color:var(--frt);text-shadow:0 0 6px rgba(201,170,255,.45)}
 .row .left{color:#ffd88a;font-size:.8em;white-space:nowrap;text-align:right}
 .row.gone>*{opacity:.4}
 .row.gone .left{color:var(--muted);text-shadow:none}
@@ -156,6 +158,8 @@ tbody td{width:calc(50% - 1.2em)}
 td span{display:inline-block;margin-right:12px;font-family:var(--f-num);font-weight:500;font-size:1.02rem}
 td span sup{font-family:var(--f-body);font-size:.62em;color:var(--muted);margin-left:1px}
 td span.ltd,td span.ltd sup{color:var(--ltd)}
+td span.frt,td span.frt sup{color:var(--frt)}
+td span.noday{text-decoration:line-through;opacity:.3}
 td span.past{opacity:.3}
 td span.next{color:var(--led);text-shadow:0 0 8px rgba(255,178,30,.5)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted)}
@@ -231,25 +235,29 @@ body.kiosk #exitfs{display:inline-flex}
         <label>お知らせ <select id="lead"><option value="3" selected>3分前</option><option value="5">5分前</option><option value="10">10分前</option><option value="15">15分前</option></select></label>
         <label>音声 <select id="voice"><option value="ja-en" selected>日本語＋English</option><option value="ja">日本語のみ</option><option value="off">なし（チャイムのみ）</option></select></label>
         <label><input type="checkbox" id="c-pass" checked> 特急しなのの通過も表示</label>
+        <label><input type="checkbox" id="c-frt" checked> 貨物列車も表示</label>
+        <label><input type="checkbox" id="c-spec"> 臨時の貨物列車も表示（運転日は不明）</label>
         <button id="demo" type="button" class="small">音声を試す</button>
       </div>
     </details>
   </section>
 
   <section class="tt">
-    <h3>時刻表<small>普通は発車時刻、特急しなのは通過時刻（推定）</small></h3>
+    <h3>時刻表<small>普通は発車時刻、特急しなの・貨物列車は通過時刻（推定）</small></h3>
     <table id="tt"><thead><tr><th></th><th>→ 中津川・名古屋方面</th><th>← 南木曽・松本・長野方面</th></tr></thead><tbody></tbody></table>
   </section>
 
   <div class="legend">
     <span><i class="dot" style="background:var(--text)"></i><b>普通 発車</b></span>
     <span><i class="dot" style="background:var(--ltd)"></i><b>特急しなの 通過（推定）</b></span>
-    <span><b><sup>曽</sup> 南木曽行　<sup>尻</sup> 塩尻行　無印 松本行（松本方面）</b></span>
+    <span><i class="dot" style="background:var(--frt)"></i><b>貨物列車 通過（推定）</b></span>
+    <span><b><sup>曽</sup> 南木曽行　<sup>尻</sup> 塩尻行　無印 松本行（松本方面）　<sup>貨</sup> 貨物　<sup>臨</sup> 臨時の貨物　取り消し線は今日運休</b></span>
   </div>
 
   <p class="note">
     特急「しなの」の通過時刻は公表されていないため、中津川駅の時刻から約6〜7分の走行時間で推定した目安です（前後1〜2分のずれあり）。「しなの」は坂下駅に1本も停車しません。<br>
-    2026年11月時点のダイヤ（平日・土休日とも同一）。遅れは、JR東海の列車走行位置から最大1分ごとに反映します（運転中の列車のみ。臨時列車・運休は反映しません）。最新情報はJR東海の運行情報でご確認ください。<br>
+    貨物列車の時刻は、貨物時刻表（2026年3月改正）の運行図表から読み取った推定で、前後3分程度のずれがあります。遅れは反映しません。5875列車は坂下で約10分停車しますが、乗車はできません。運休日（月曜運休・土休日運休など）は反映していますが、年末年始などの特別な運休は反映しません。臨時列車と運転期日を別に指定する列車は運転日が分からないため、設定で選んだときだけ表示します。<br>
+    2026年11月時点のダイヤ（旅客列車は平日・土休日とも同一）。遅れは、JR東海の列車走行位置から最大1分ごとに反映します（運転中の列車のみ。臨時列車・運休は反映しません）。最新情報はJR東海の運行情報でご確認ください。<br>
     出典：<a href="https://ekitan.com/timetable/railway/line-station/9-60/d2" target="_blank" rel="noopener">駅探</a>、<a href="https://www.navitime.co.jp/diagram/timetable?node=00002843&lineId=00000109&updown=0" target="_blank" rel="noopener">NAVITIME</a>、<a href="https://jr-group.jp/shinano-timetable/" target="_blank" rel="noopener">特急「しなの」時刻表</a>、<a href="https://traininfo.jr-central.co.jp/zairaisen/" target="_blank" rel="noopener">JR東海 在来線運行情報</a>
   </p>
 </div>
@@ -281,9 +289,33 @@ const TN = {
   up:{"6:13":"823M","6:53":"1825M","7:08":"1851M","7:58":"1827M","8:24":"1853M","10:10":"829M","12:10":"1831M","13:10":"1857M","14:24":"1833M",
       "16:09":"1859M","17:07":"1837M","18:07":"1839M","19:07":"1863M","20:10":"1841M","21:40":"843M","23:20":"1869M"}
 };
-for (const k in T) T[k].list = T[k].list.map(([t,d,no])=>{const [h,m]=t.split(":").map(Number);
+/* 貨物列車：貨物時刻表（2026年3月改正）の運行図表から読み取った坂下付近の時刻（前後3分程度の幅あり）。
+   off＝運休日（始発駅を出る日で判定）、prev＝始発駅を出た翌日に坂下を通る、
+   spec＝臨時または運転期日を別に指定する列車（運転日が分からない）、until＝坂下に運転停車する列車の発車時刻 */
+const FREIGHT = [
+  {k:"down", t:"1:57",  no:"80",   d:"稲沢",   off:"sun", prev:true, note:"月曜未明は運休（日曜発が運休）"},
+  {k:"up",   t:"2:11",  no:"6089", d:"南松本", prev:true, spec:true},
+  {k:"up",   t:"2:27",  no:"8871", d:"南松本", spec:true},
+  {k:"down", t:"2:34",  no:"8870", d:"稲沢",   spec:true},
+  {k:"up",   t:"6:44",  no:"8873", d:"南松本", spec:true},
+  {k:"up",   t:"8:14",  no:"8883", d:"南松本", spec:true},
+  {k:"down", t:"9:19",  no:"6088", d:"四日市", spec:true},
+  {k:"down", t:"13:11", no:"8084", d:"塩浜",   spec:true},
+  {k:"up",   t:"15:13", no:"81",   d:"北長野", off:"mon", note:"月曜運休"},
+  {k:"up",   t:"15:48", no:"5875", d:"南松本", off:"satHol", until:"15:58", note:"土・休日運休"},
+  {k:"down", t:"16:09", no:"8872", d:"四日市", spec:true},
+  {k:"up",   t:"19:15", no:"8885", d:"南松本", spec:true},
+  {k:"down", t:"19:47", no:"8878", d:"四日市", spec:true},
+  {k:"up",   t:"21:19", no:"8083", d:"南松本", spec:true},
+  {k:"down", t:"22:16", no:"8882", d:"塩浜",   spec:true},
+  {k:"down", t:"22:58", no:"5880", d:"塩浜",   off:"satHol", note:"土・休日運休"}
+];
+const toMin = t => { const [h,m]=t.split(":").map(Number); return h*60+m; };
+for (const k in T) T[k].list = T[k].list.map(([t,d,no])=>{
   const tn = no ? `10${String(no.replace(/\D/g,"")).padStart(2,"0")}M` : TN[k][t];
-  return {t,d,no,tn,pass:!!no,min:h*60+m,k};}).sort((a,b)=>a.min-b.min);
+  return {t,d,no,tn,pass:!!no,cat:no?"ltd":"local",min:toMin(t),k};})
+  .concat(FREIGHT.filter(f=>f.k===k).map(f=>({...f,tn:null,pass:true,cat:"freight",min:toMin(f.t)})))
+  .sort((a,b)=>a.min-b.min);
 
 /* ---- 遅延情報（同じサイトの /api/status、最大1分に1回） ---- */
 const LIVE_URL = "/api/status", LIVE_INTERVAL = 60000;
@@ -297,7 +329,29 @@ let running=false, alerted=new Set(), audio=null, wake=null, alertTimer=null, la
 
 const nowSec = () => {const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();};
 const fmtLeft = s => s<60 ? "まもなく" : (s>=3600 ? `${Math.floor(s/3600)}時間${Math.floor(s%3600/60)}分` : `${Math.floor(s/60)}分後`);
-const visible = x => !x.pass || $("c-pass").checked;
+
+/* 貨物列車の運休判定に使う祝日（振替休日・国民の休日を含む）。2027年末まで。以降は土日だけで判定する */
+const HOLIDAYS = new Set([
+  "2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06",
+  "2026-07-20","2026-08-11","2026-09-21","2026-09-22","2026-09-23","2026-10-12","2026-11-03","2026-11-23",
+  "2027-01-01","2027-01-11","2027-02-11","2027-02-23","2027-03-21","2027-03-22","2027-04-29","2027-05-03","2027-05-04","2027-05-05",
+  "2027-07-19","2027-08-11","2027-09-20","2027-09-23","2027-10-11","2027-11-03","2027-11-23"
+]);
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const isRestDay = d => d.getDay()===0 || d.getDay()===6 || HOLIDAYS.has(ymd(d));   // 土曜・日曜・祝日
+/* d の日に坂下を通るか。運休日は始発駅を出る日で判定するので、翌日に通る列車は前日で見る */
+function runsOn(x, d){
+  if (!x.off) return true;
+  const o = new Date(d); if (x.prev) o.setDate(o.getDate()-1);
+  if (x.off==="sun") return o.getDay()!==0;
+  if (x.off==="mon") return o.getDay()!==1;
+  if (x.off==="satHol") return !isRestDay(o);
+  return true;
+}
+const showFreight = x => $("c-frt").checked && (!x.spec || $("c-spec").checked);
+const visible = (x, d=new Date()) =>
+  x.cat==="ltd" ? $("c-pass").checked : x.cat==="freight" ? showFreight(x) && runsOn(x, d) : true;
+const catCls = x => x.cat==="ltd" ? "pass" : x.cat==="freight" ? "frt" : "";
 
 /* 向きは駅名標と同じ：右が中津川・名古屋、左が南木曽・松本・長野 */
 const ARROW = {down:"→", up:"←"};
@@ -306,12 +360,17 @@ const ALL = [...T.down.list, ...T.up.list];
 
 function buildTables(){
   const hours=[...new Set(ALL.map(x=>Math.floor(x.min/60)))].sort((a,b)=>a-b);
-  const cell=(k,h)=>T[k].list.map((x,i)=>Math.floor(x.min/60)===h ?
-    `<span data-k="${k}" data-i="${i}" ${x.pass?`title="${x.no} 通過（推定）"`:""}>${pad(x.min%60)}${x.pass?"<sup>通</sup>":(k==="up"&&mark[x.d]?`<sup>${mark[x.d]}</sup>`:"")}</span>` : "").join("");
+  const title = x => x.cat==="ltd" ? `${x.no} 通過（推定）` :
+    `貨物 ${x.no} ${x.d}ゆき ${x.until?`${x.until}ごろまで停車`:"通過"}（推定）${x.spec?"・運転日は不明":""}${x.note?"・"+x.note:""}`;
+  const sup = x => x.cat==="ltd" ? "<sup>通</sup>" : x.cat==="freight" ? `<sup>${x.spec?"臨":"貨"}</sup>` :
+    (x.k==="up"&&mark[x.d]?`<sup>${mark[x.d]}</sup>`:"");
+  const cell=(k,h)=>T[k].list.map((x,i)=>Math.floor(x.min/60)===h && (x.cat!=="freight" || showFreight(x)) ?
+    `<span data-k="${k}" data-i="${i}" ${x.cat!=="local"?`title="${title(x)}"`:""}>${pad(x.min%60)}${sup(x)}</span>` : "").join("");
   $("tt").tBodies[0].innerHTML = hours.map(h=>`<tr><th>${h}</th><td>${cell("down",h)}</td><td>${cell("up",h)}</td></tr>`).join("");
 }
 
-const kindHtml = x => x.pass ? `<span class="kind ltd">特急</span>` : `<span class="kind local">普通</span>`;
+const kindHtml = x => x.cat==="ltd" ? `<span class="kind ltd">特急</span>` :
+  x.cat==="freight" ? `<span class="kind frt">貨物</span>` : `<span class="kind local">普通</span>`;
 const lateHtml = x => { const dl=delayOf(x); return dl>0 ? `<span class="late">${dl}分おくれ</span>` : ""; };
 /* ルール：表示する時刻は遅れを足した時刻。遅れているときは必ず時刻の横に「N分おくれ」を付ける */
 const effT = x => { const m=(x.min+delayOf(x))%1440; return `${Math.floor(m/60)}:${pad(m%60)}`; };
@@ -323,16 +382,18 @@ const countdown = left => left<60 ? ["まもなく",""] : left<600 ? [`${Math.fl
 function renderHero(x, s, lead){
   const el=$("hero");
   if (!x){
-    const first=ALL.filter(visible).sort((a,b)=>a.min-b.min)[0];
+    const tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+    const first=ALL.filter(x=>visible(x,tomorrow)).sort((a,b)=>a.min-b.min)[0];
     el.className="hero none";
     el.innerHTML=`<div class="h-lab">つぎの電車</div><div class="h-arr">・</div><div class="h-what">きょうの電車はおわりました</div>`+
       (first?`<div class="h-sub">あしたは ${first.t} から</div>`:"");
     return;
   }
   const left=effSec(x)-s, [big,small]=countdown(left);
-  const name = x.pass ? `しなの ${x.no.replace(/\D/g,"")}号` : `${x.d}ゆき`;
-  const how = x.pass ? `${x.d}ゆき・とまらずに通過` : `坂下にとまります`;
-  el.className=`hero ${x.pass?"pass":""} ${left<=lead?"soon":""}`;
+  const name = x.cat==="ltd" ? `しなの ${x.no.replace(/\D/g,"")}号` : x.cat==="freight" ? `${x.no}列車` : `${x.d}ゆき`;
+  const how = x.cat==="local" ? `坂下にとまります` :
+    x.until ? `${x.d}ゆき・${x.until}ごろまで停車（乗れません）` : `${x.d}ゆき・とまらずに通過`;
+  el.className=`hero ${catCls(x)} ${left<=lead?"soon":""}`;
   el.innerHTML=`<div class="h-lab">つぎの電車</div>`+
     `<div class="h-arr" aria-label="${TOWARD[x.k]}">${ARROW[x.k]}</div>`+
     `<div class="h-what">${kindHtml(x)}${name}<small>${how}</small></div>`+
@@ -348,16 +409,19 @@ function render(){
   /* 10分以内に通過・発車した列車（暗く表示）＋これから来る列車 */
   const gone=ALL.filter(x=>visible(x) && effSec(x)<=s && s-effSec(x)<=600).sort((a,b)=>effSec(a)-effSec(b));
   const rest=next.slice(1, Math.max(3, 6-gone.length));
-  const destOf = x => x.pass ? `しなの ${x.no.replace(/\D/g,"")}号 通過` : `${x.d}ゆき`;
-  const rowOf = (x, cls, left) => `<div class="row ${cls} ${x.pass?"pass":""}"><span class="tm">${timeHtml(x)}</span><span class="arr">${ARROW[x.k]}</span>${kindHtml(x)}<span class="dest">${destOf(x)}</span><span class="left">${left}</span></div>`;
+  const destOf = x => x.cat==="ltd" ? `しなの ${x.no.replace(/\D/g,"")}号 通過` :
+    x.cat==="freight" ? `${x.no}列車 ${x.until?`${x.until}まで停車`:"通過"}` : `${x.d}ゆき`;
+  const goneTx = x => x.until ? (s < toMin(x.until)*60 ? "停車中" : "発車") : x.pass ? "通過" : "発車";
+  const rowOf = (x, cls, left) => `<div class="row ${cls} ${catCls(x)}"><span class="tm">${timeHtml(x)}</span><span class="arr">${ARROW[x.k]}</span>${kindHtml(x)}<span class="dest">${destOf(x)}</span><span class="left">${left}</span></div>`;
   $("list-h").textContent = gone.length ? "さっき・そのあと" : "そのあと";
   $("b-list").innerHTML =
-    gone.map(x=>{ const ago=Math.floor((s-effSec(x))/60); return rowOf(x, "gone", `${ago<1?"いま":ago+"分前"} ${x.pass?"通過":"発車"}`); }).join("") +
+    gone.map(x=>{ const ago=Math.floor((s-effSec(x))/60); return rowOf(x, "gone", goneTx(x)==="停車中" ? "停車中" : `${ago<1?"いま":ago+"分前"} ${goneTx(x)}`); }).join("") +
     (rest.length ? rest.map(x=>{ const left=effSec(x)-s; return rowOf(x, left<=lead?"soon":"", fmtLeft(left)); }).join("")
       : `<div class="row none"><span>--:--</span><span></span><span></span><span class="dest">このあとの電車はありません</span><span></span></div>`);
   document.querySelectorAll("span[data-k]").forEach(el=>{
     const x=T[el.dataset.k].list[el.dataset.i];
-    el.className = (effSec(x)<=s ? "past" : (x===next[0] ? "next" : "")) + (x.pass?" ltd":"") + (delayOf(x)>0?" late":"");
+    el.className = (effSec(x)<=s ? "past" : (x===next[0] ? "next" : "")) + (x.cat==="ltd"?" ltd":x.cat==="freight"?" frt":"") +
+      (x.cat==="freight" && !runsOn(x,d) ? " noday" : "") + (delayOf(x)>0?" late":"");
   });
   if (running){
     for (const x of next){
@@ -369,6 +433,7 @@ function render(){
   const lm = LIVE.line && LIVE.line.message ? `【中央線 運行情報】${LIVE.line.message}　　` : "";
   const tk = lm + (running ? `案内中　発車・通過の${$("lead").value}分前にお知らせします　　` : "") +
     (LIVE.state==="ok" ? "遅れはJR東海の列車走行位置から1分ごとに反映しています　　" : "") +
+    ($("c-frt").checked ? "貨物列車の時刻は運行図表から読み取った推定値です（前後3分程度・遅れは反映しません）　　" : "") +
     "坂下駅は特急「しなの」がすべて通過します。通過時刻は推定値です　　黄色い線の内側でお待ちください";
   if (tk!==lastTicker){ $("ticker").textContent=tk; lastTicker=tk; }
 }
@@ -443,7 +508,18 @@ function phrase(x,m){
   const lateJa = dl>0 ? [`この列車は、およそ${dl}分遅れて運転しています。`] : [];
   const lateEn = dl>0 ? [`This train is running about ${dl} minute${dl>1?"s":""} behind schedule.`] : [];
   const lateTxEn = dl>0 ? ` (${dl} min late)` : "";
-  if (x.pass) return {
+  if (x.cat==="freight") return x.until ? {
+    text:`${timeTx(x)}ごろ 貨物列車${x.no}（${x.d}行）があと約${m}分で到着（${x.until}ごろまで停車・乗車できません）`,
+    en:`Freight train ${x.no} arrives in about ${m} min (not in service)`,
+    ja:[`まもなく、貨物列車が、到着いたします。`, `この列車には、ご乗車になれません。`, `黄色い線の内側で、お待ちください。`],
+    enSay:[`Attention, please.`, `A freight train will soon arrive at this station. This train is not in service.`, `Please wait behind the yellow line.`]
+  } : {
+    text:`${timeTx(x)}ごろ 貨物列車${x.no}（${x.d}行）があと約${m}分で通過します`,
+    en:`Freight train ${x.no} passes in about ${m} min`,
+    ja:[`まもなく、貨物列車が、通過いたします。`, `危ないですから、黄色い線の内側まで、お下がりください。`],
+    enSay:[`Attention, please.`, `A freight train will soon pass through this station.`, `For your safety, please stand behind the yellow line.`]
+  };
+  if (x.cat==="ltd") return {
     text:`${timeTx(x)}ごろ 特急${x.no}（${x.d}行）があと約${m}分で通過します`,
     en:`Limited Express Shinano No. ${num} for ${roma}${lateTxEn} passes in about ${m} min`,
     ja:[`まもなく、特急しなの${num}号、${yomi}ゆきが、通過いたします。`, ...lateJa, `危ないですから、黄色い線の内側まで、お下がりください。`],
@@ -558,6 +634,7 @@ function showStatus(){
     : `「案内を開始」を押すと、発車・通過の${lead}分前にチャイムと音声でお知らせします。`;
 }
 ["lead","c-pass","voice"].forEach(id=>$(id).addEventListener("change",()=>{ showStatus(); render(); }));
+["c-frt","c-spec"].forEach(id=>$(id).addEventListener("change",()=>{ buildTables(); render(); }));
 if ("speechSynthesis" in window) speechSynthesis.getVoices();   // 音声一覧を先に読み込んでおく
 
 buildTables(); showStatus(); render(); setInterval(render,1000);
